@@ -1,6 +1,6 @@
 import glob
 import pathlib
-from rdflib import URIRef, Literal, BNode, Graph
+from rdflib import URIRef, Literal, BNode, Graph, ConjunctiveGraph
 from rdflib.namespace import RDF, RDFS, SKOS, OWL, Namespace, NamespaceManager, XSD
 
 BDR = Namespace("http://purl.bdrc.io/resource/")
@@ -9,7 +9,7 @@ TMP = Namespace("http://purl.bdrc.io/ontology/tmp/")
 BDA = Namespace("http://purl.bdrc.io/admindata/")
 ADM = Namespace("http://purl.bdrc.io/ontology/admin/")
 
-NSM = NamespaceManager(Graph())
+NSM = NamespaceManager(ConjunctiveGraph())
 NSM.bind("bdr", BDR)
 NSM.bind("bdo", BDO)
 NSM.bind("tmp", TMP)
@@ -29,21 +29,16 @@ def get_all_type(basedir, typeT):
     print("walk ", basedir)
     for trig_file in pathlib.Path(basedir).glob('*/*.trig'):
         i += 1
-        if i > 4:
-            return
-        model = Graph()
+        #if i > 100:
+        #    return
+        model = ConjunctiveGraph()
         model.parse(str(trig_file), format="trig")
-        print(model)
-        print(model.serialize(format='trig'))
         main = BDR[trig_file.stem]
         if main not in ENTITIES:
             ENTITIES[main] = {"type": typeT}
         if (typeT == "work"):
             nb_instances = 0
-            for s, p, o in model.triples((None, None, None)):
-                print("toto")
             for s,p,o in model.triples( (None,  BDO.workHasInstance, None) ):
-                print("test")
                 nb_instances += 1
             ENTITIES[main]["nbInstances"] = nb_instances
             for s,p,o in model.triples( (None,  BDO.workHasTranslation, None) ):
@@ -57,35 +52,38 @@ def get_all_type(basedir, typeT):
                 ENTITIES[o]["translations"].append(s)
             for e,p,person in model.triples( (None,  BDO.agent, None) ):
                 for e,ep,role in model.triples( (e,  BDO.role, None) ):
-                    for r,rp,e in model.triples( (None,  BDO.workEvent, e) ):
-                        # R0ER0011 = attributed author
-                        # R0ER0014 = commentator
-                        # R0ER0016 = contributing author
-                        # R0ER0017 = head translator
-                        # R0ER0018 = Source Language Scholar
-                        # R0ER0019 = main author
-                        # R0ER0025 = terton
-                        # R0ER0026 = translator
-                        rgroup = "group4"
-                        if role == BDR.R0ER0025 or role == R0ER0011 or role == R0ER0019:
-                            rgroup = "group1"
-                        elif role == BDR.R0ER0014:
-                            rgroup = "group2"
-                        elif role == BDR.R0ER0017 or role == BDR.R0ER0018 or BDR.R0ER0026:
-                            rgroup = "group3"
-                        if person not in ENTITIES:
-                            ENTITIES[person] = {}
-                        if rgroup not in ENTITIES[person]:
-                            ENTITIES[person][rgroup] = []
-                        ENTITIES[person][rgroup].append(r)
+                    # R0ER0011 = attributed author
+                    # R0ER0014 = commentator
+                    # R0ER0016 = contributing author
+                    # R0ER0017 = head translator
+                    # R0ER0018 = Source Language Scholar
+                    # R0ER0019 = main author
+                    # R0ER0025 = terton
+                    # R0ER0026 = translator
+                    rgroup = "group4"
+                    if role == BDR.R0ER0025 or role == BDR.R0ER0011 or role == BDR.R0ER0019:
+                        rgroup = "group1"
+                    elif role == BDR.R0ER0014:
+                        rgroup = "group2"
+                    elif role == BDR.R0ER0017 or role == BDR.R0ER0018 or BDR.R0ER0026:
+                        rgroup = "group3"
+                    if person not in ENTITIES:
+                        ENTITIES[person] = {}
+                    if rgroup not in ENTITIES[person]:
+                        ENTITIES[person][rgroup] = []
+                    ENTITIES[person][rgroup].append(main)
             for s,p,o in model.triples( (None,  BDO.workIsAbout, None) ):
                 if o not in ENTITIES:
                     ENTITIES[o] = {"nbAbout": 0}
+                if "nbAbout" not in ENTITIES[o]:
+                    ENTITIES[o]["nbAbout"] = 0
                 ENTITIES[o]["nbAbout"] += 1
         for s,p,o in model.triples( (None,  None, None) ):
-            if p == BDO.eventWhere or p == BDO.eventWho or p == BDO.placeLocatedIn or p == instanceHasSourcePrintery:
+            if p == BDO.eventWhere or p == BDO.eventWho or p == BDO.placeLocatedIn or p == BDO.instanceHasSourcePrintery or p == BDO.personTeacherOf or p == BDO.personStudentOf :
                 if o not in ENTITIES:
                     ENTITIES[o] = {"nbRefs": 0}
+                if "nbRefs" not in ENTITIES[o]:
+                    ENTITIES[o]["nbRefs"] = 0
                 ENTITIES[o]["nbRefs"] += 1
 
 GROUP_FACTORS = {
@@ -98,10 +96,9 @@ GROUP_FACTORS = {
 def main():
     global ENTITIES
     get_all_type(GITDIRS+"works/", "work")
-    print(ENTITIES)
     # we need to make a few passes, first works:
     for einfo in ENTITIES.values():
-        if einfo["type"] != "work":
+        if "type" not in einfo or einfo["type"] != "work":
             continue
         selfscore = 0
         if "nbInstances" in einfo:
@@ -127,7 +124,7 @@ def main():
     get_all_type(GITDIRS+"places/", "place")
     get_all_type(GITDIRS+"persons/", "person")
     for einfo in ENTITIES.values():
-        if einfo["type"] == "work":
+        if "type" in einfo and einfo["type"] == "work":
             continue
         selfscore = 0
         if "selfscore" in einfo:
@@ -148,7 +145,8 @@ def main():
     g.bind("tmp", TMP)
     for e, einfo in ENTITIES.items():
         selfscore = einfo["selfscore"] if "selfscore" in einfo else 0
-        g.add((e, TMP.entityScore, Literal(selfscore)))
+        if selfscore > 0:
+            g.add((e, TMP.entityScore, Literal(selfscore)))
     g.serialize("entityScores.ttl", format="turtle")
 
 if __name__ == "__main__":
