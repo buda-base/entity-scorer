@@ -31,6 +31,9 @@ def get_all_type(basedir, typeT):
         i += 1
         #if i > 100:
         #    return
+        parse_one(trig_file, typeT)
+
+def parse_one(trig_file, typeT):
         model = ConjunctiveGraph()
         model.parse(str(trig_file), format="trig")
         main = BDR[trig_file.stem]
@@ -96,6 +99,7 @@ GROUP_FACTORS = {
 def main():
     global ENTITIES
     get_all_type(GITDIRS+"works/", "work")
+    #parse_one(pathlib.Path('../xmltoldmigration/tbrc-ttl/works/e8/WA1AC220.trig'), "work")
     # we need to make a few passes, first works:
     for einfo in ENTITIES.values():
         if "type" not in einfo or einfo["type"] != "work":
@@ -140,6 +144,7 @@ def main():
                     work = ENTITIES[workR]
                     if "selfscore" in work:
                         selfscore += work["selfscore"]*gfactor
+        einfo["selfscore"] = selfscore
     g = Graph()
     g.bind("bdr", BDR)
     g.bind("tmp", TMP)
