@@ -29,7 +29,7 @@ def get_all_type(basedir, typeT):
     print("walk ", basedir)
     for trig_file in pathlib.Path(basedir).glob('*/*.trig'):
         i += 1
-        #if i > 100:
+        #if i > 10000:
         #    return
         parse_one(trig_file, typeT)
 
@@ -39,7 +39,9 @@ def parse_one(trig_file, typeT):
         main = BDR[trig_file.stem]
         if main not in ENTITIES:
             ENTITIES[main] = {"type": typeT}
-        if (typeT == "work"):
+        else:
+            ENTITIES[main]["type"] = typeT
+        if typeT == "work":
             nb_instances = 0
             for s,p,o in model.triples( (None,  BDO.workHasInstance, None) ):
                 nb_instances += 1
@@ -51,8 +53,8 @@ def parse_one(trig_file, typeT):
                 if o not in ENTITIES:
                     ENTITIES[o] = {}
                 if "translationOf" not in ENTITIES[o]:
-                    ENTITIES[o]["translations"] = []
-                ENTITIES[o]["translations"].append(s)
+                    ENTITIES[o]["translationOf"] = []
+                ENTITIES[o]["translationOf"].append(s)
             for e,p,person in model.triples( (None,  BDO.agent, None) ):
                 for e,ep,role in model.triples( (e,  BDO.role, None) ):
                     # R0ER0011 = attributed author
@@ -105,6 +107,8 @@ def main():
         if "type" not in einfo or einfo["type"] != "work":
             continue
         selfscore = 0
+        if "selfscore" in einfo:
+            selfscore = einfo["selfscore"]
         if "nbInstances" in einfo:
             selfscore += einfo["nbInstances"]
         if "nbRefs" in einfo:
@@ -112,7 +116,7 @@ def main():
         if "nbAbout" in einfo:
             selfscore += einfo["nbAbout"]*2
         if "translations" in einfo:
-            selfscore += len(einfo["translations"])
+            selfscore += len(einfo["translations"])*4
             for t in einfo["translations"]:
                 te = ENTITIES[t]
                 if "selfscore" not in te:
@@ -123,7 +127,9 @@ def main():
                 te = ENTITIES[t]
                 if "selfscore" not in te:
                     te["selfscore"] = 0
-                te["selfscore"] += selfscore
+                newotherselfscore = te["selfscore"] + selfscore
+                selfscore += te["selfscore"]
+                te["selfscore"] = newotherselfscore
         einfo["selfscore"] = selfscore
     get_all_type(GITDIRS+"places/", "place")
     get_all_type(GITDIRS+"persons/", "person")
