@@ -19,7 +19,7 @@ NSM.bind("skos", SKOS)
 NSM.bind("rdfs", RDFS)
 
 
-GITDIRS = "../xmltoldmigration/tbrc-ttl/"
+GITDIRS = "../bdrc-git-repos/"
 
 ENTITIES = {}
 
@@ -78,6 +78,16 @@ def parse_one(trig_file, typeT):
                         ENTITIES[person][rgroup] = []
                     ENTITIES[person][rgroup].append(main)
             for s,p,o in model.triples( (None,  BDO.workIsAbout, None) ):
+                if " " in str(o):
+                    continue
+                if o not in ENTITIES:
+                    ENTITIES[o] = {"nbAbout": 0}
+                if "nbAbout" not in ENTITIES[o]:
+                    ENTITIES[o]["nbAbout"] = 0
+                ENTITIES[o]["nbAbout"] += 1
+            for s,p,o in model.triples( (None,  BDO.workGenre, None) ):
+                if " " in str(o):
+                    continue
                 if o not in ENTITIES:
                     ENTITIES[o] = {"nbAbout": 0}
                 if "nbAbout" not in ENTITIES[o]:
@@ -101,7 +111,7 @@ GROUP_FACTORS = {
 def main():
     global ENTITIES
     get_all_type(GITDIRS+"works/", "work")
-    #parse_one(pathlib.Path('../xmltoldmigration/tbrc-ttl/works/e8/WA1AC220.trig'), "work")
+    #parse_one(pathlib.Path('../bdrc-git-repos/works/03/WA1FEMC110009.trig'), "work")
     # we need to make a few passes, first works:
     for einfo in ENTITIES.values():
         if "type" not in einfo or einfo["type"] != "work":
