@@ -46,7 +46,7 @@ def parse_one(trig_file, typeT):
             for s,p,o in model.triples( (None,  BDO.workHasInstance, None) ):
                 nb_instances += 1
             ENTITIES[main]["nbInstances"] = nb_instances
-            for s,p,o in model.triples( (None,  BDO.workHasTranslation, None) ):
+            for s,p,o in model.triples( (None,  BDO.workHasParallelsIn, None) ):
                 if "translations" not in ENTITIES[s]:
                     ENTITIES[s]["translations"] = []
                 ENTITIES[s]["translations"].append(o)
@@ -110,7 +110,7 @@ def main():
         if "selfscore" in einfo:
             selfscore = einfo["selfscore"]
         if "nbInstances" in einfo:
-            selfscore += einfo["nbInstances"]
+            selfscore += einfo["nbInstances"]*2
         if "nbRefs" in einfo:
             selfscore += einfo["nbRefs"]
         if "nbAbout" in einfo:
