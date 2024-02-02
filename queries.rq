@@ -1,0 +1,13 @@
+select ?wa ?cmw {
+  {
+	select ?wa (count(?mw) as ?cmw) {
+		?wa :workHasInstance ?mw
+	} group by ?wa
+  }
+  FILTER(?cmw > 1)
+}
+
+select ?main ?p (count(?other) as ?nbothers) {
+	values ?p { :workHasParallelsIn :agent :workIsAbout :workGenre :eventWhere :eventWho :placeLocatedIn :hasSourcePrintery :personTeacherOf }
+	?other ?p ?main
+} group by ?main ?p
